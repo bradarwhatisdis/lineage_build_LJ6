@@ -6,10 +6,9 @@ on:
       lineage_branch:
         description: LineageOS branch
         required: true
-        default: lineage-23.2
+        default: lineage-22.2
         type: choice
         options:
-          - lineage-23.2
           - lineage-22.2
           - lineage-22.1
           - lineage-21.0
@@ -21,22 +20,6 @@ on:
         options:
           - userdebug
           - eng
-      device_tree_url:
-        description: Device tree repo URL
-        required: true
-        type: string
-      vendor_tree_url:
-        description: Device vendor tree repo URL (e.g. vendor/tecno/LJ6)
-        required: false
-        type: string
-      vendor_common_url:
-        description: Common vendor tree repo URL (e.g. vendor/tecno/mt6789-common)
-        required: false
-        type: string
-      kernel_tree_url:
-        description: Kernel tree repo URL (optional)
-        required: false
-        type: string
       ccache_size:
         description: CCache size (GB)
         required: true
@@ -48,6 +31,9 @@ env:
   BRAND: TECNO
   BUILD_TYPE: ${{ inputs.build_type }}
   LINEAGE_BRANCH: ${{ inputs.lineage_branch }}
+  DEVICE_TREE_URL: https://github.com/bradarwhatisdis/android_device_tecno_LJ6
+  VENDOR_TREE_URL: https://github.com/bradarwhatisdis/android_vendor_tecno_LJ6
+  VENDOR_COMMON_URL: https://github.com/bradarwhatisdis/android_vendor_tecno_mt6789-common
   CCACHE_DIR: /home/runner/.ccache
   USE_CCACHE: 1
   CCACHE_COMPRESS: 1
@@ -122,28 +108,20 @@ jobs:
       - name: Clone Device Tree
         run: |
           mkdir -p ~/android/lineage/device/tecno
-          git clone --depth=1 ${{ inputs.device_tree_url }} \
+          git clone --depth=1 $DEVICE_TREE_URL \
             ~/android/lineage/device/tecno/LJ6
 
       - name: Clone Vendor Tree
-        if: ${{ inputs.vendor_tree_url != '' }}
         run: |
           mkdir -p ~/android/lineage/vendor/tecno
-          git clone --depth=1 ${{ inputs.vendor_tree_url }} \
+          git clone --depth=1 $VENDOR_TREE_URL \
             ~/android/lineage/vendor/tecno/LJ6
 
       - name: Clone Common Vendor Tree
-        if: ${{ inputs.vendor_common_url != '' }}
         run: |
           mkdir -p ~/android/lineage/vendor/tecno
-          git clone --depth=1 ${{ inputs.vendor_common_url }} \
+          git clone --depth=1 $VENDOR_COMMON_URL \
             ~/android/lineage/vendor/tecno/mt6789-common
-
-      - name: Clone Kernel Tree
-        if: ${{ inputs.kernel_tree_url != '' }}
-        run: |
-          git clone --depth=1 ${{ inputs.kernel_tree_url }} \
-            ~/android/lineage/kernel/tecno/LJ6
 
       - name: Set up Build Environment
         run: |

@@ -4,16 +4,15 @@ Automated build workflow for LineageOS on Tecno LJ6 (MT6789).
 
 ## Usage
 
-1. Push device tree, vendor, and kernel to your GitHub repos
-2. Go to **Actions** → **Build LineageOS for LJ6**
-3. Click **Run workflow**
-4. Fill in:
-   - `device_tree_url`: your device tree repo URL
-   - `lineage_branch`: `lineage-22.2` (Android 15)
-   - `vendor_tree_url`: device-specific vendor blobs (required)
-   - `vendor_common_url`: shared MT6789 vendor blobs (required)
-   - `kernel_tree_url`: optional (uses prebuilt if empty)
-5. Wait ~3-5 hours, download artifacts when done
+1. Go to **Actions** → **Build LineageOS for LJ6**
+2. Click **Run workflow**
+3. Pilih branch dan build type
+4. Wait ~3-5 hours, download artifacts when done
+
+Repos sudah di-hardcode:
+- Device tree: https://github.com/bradarwhatisdis/android_device_tecno_LJ6
+- Vendor tree: https://github.com/bradarwhatisdis/android_vendor_tecno_LJ6
+- Vendor common: https://github.com/bradarwhatisdis/android_vendor_tecno_mt6789-common
 
 ## Build Output
 
