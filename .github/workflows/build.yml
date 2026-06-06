@@ -6,9 +6,10 @@ on:
       lineage_branch:
         description: LineageOS branch
         required: true
-        default: lineage-22.2
+        default: lineage-23.2
         type: choice
         options:
+          - lineage-23.2
           - lineage-22.2
           - lineage-22.1
           - lineage-21.0
