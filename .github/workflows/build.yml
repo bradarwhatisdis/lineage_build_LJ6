@@ -155,7 +155,7 @@ jobs:
       - name: Sync LineageOS Source
         run: |
           cd ~/android/lineage
-          ~/bin/repo sync -c -j$(nproc --all) --force-sync --no-clone-bundle --no-tags --depth=1
+          ~/bin/repo sync -c -j$(nproc --all) --force-sync --no-clone-bundle --no-tags
         shell: bash
         timeout-minutes: 120
 
