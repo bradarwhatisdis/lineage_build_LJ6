@@ -1,0 +1,181 @@
+name: Build LineageOS for LJ6
+
+on:
+  workflow_dispatch:
+    inputs:
+      lineage_branch:
+        description: LineageOS branch
+        required: true
+        default: lineage-22.2
+        type: choice
+        options:
+          - lineage-22.2
+          - lineage-22.1
+          - lineage-21.0
+      build_type:
+        description: Build type
+        required: true
+        default: userdebug
+        type: choice
+        options:
+          - userdebug
+          - eng
+      device_tree_url:
+        description: Device tree repo URL
+        required: true
+        type: string
+      vendor_tree_url:
+        description: Vendor tree repo URL (optional)
+        required: false
+        type: string
+      kernel_tree_url:
+        description: Kernel tree repo URL (optional)
+        required: false
+        type: string
+      ccache_size:
+        description: CCache size (GB)
+        required: true
+        default: "20"
+        type: string
+
+env:
+  DEVICE: LJ6
+  BRAND: TECNO
+  BUILD_TYPE: ${{ inputs.build_type }}
+  LINEAGE_BRANCH: ${{ inputs.lineage_branch }}
+  CCACHE_DIR: /home/runner/.ccache
+  USE_CCACHE: 1
+  CCACHE_COMPRESS: 1
+  CCACHE_MAXSIZE: ${{ inputs.ccache_size }}G
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 360
+
+    steps:
+      - name: Checkout Build Repo
+        uses: actions/checkout@v4
+
+      - name: Free Disk Space
+        run: |
+          sudo apt-get clean
+          sudo rm -rf /usr/share/dotnet
+          sudo rm -rf /usr/local/lib/android
+          sudo rm -rf /opt/ghc
+          sudo rm -rf /opt/hostedtoolcache/CodeQL
+          df -h
+
+      - name: Install Dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            bc bison build-essential ccache curl flex g++-multilib \
+            gcc-multilib git git-lfs gnupg gperf imagemagick \
+            lib32ncurses5-dev lib32readline-dev lib32z1-dev \
+            libelf-dev liblz4-tool libncurses5 libncurses5-dev \
+            libsdl1.2-dev libssl-dev libxml2 libxml2-utils \
+            lzop pngcrush rsync schedtool squashfs-tools \
+            xsltproc zip zlib1g-dev \
+            libc6-dev-i386 libncurses6 python3 python3-pip \
+            patchelf android-sdk-libsparse-utils
+          sudo apt-get install -y \
+            openjdk-17-jdk
+          sudo update-java-alternatives -s java-1.17.0-openjdk-amd64
+
+      - name: Install repo tool
+        run: |
+          mkdir -p ~/bin
+          curl https://storage.googleapis.com/git-repo-downloads/repo > ~/bin/repo
+          chmod a+x ~/bin/repo
+          echo "$HOME/bin" >> $GITHUB_PATH
+
+      - name: Setup CCache
+        run: |
+          mkdir -p $CCACHE_DIR
+          ccache -o max_size=$CCACHE_MAXSIZE
+          ccache -o compression=true
+          ccache -o compression_level=1
+
+      - name: Initialize LineageOS Source
+        run: |
+          mkdir -p ~/android/lineage
+          cd ~/android/lineage
+          git config --global user.name "builder"
+          git config --global user.email "builder@localhost"
+          ~/bin/repo init -u https://github.com/LineageOS/android.git \
+            -b ${{ env.LINEAGE_BRANCH }} \
+            --depth=1
+
+      - name: Sync LineageOS Source
+        run: |
+          cd ~/android/lineage
+          ~/bin/repo sync -c -j$(nproc --all) --force-sync --no-clone-bundle --no-tags
+        shell: bash
+        timeout-minutes: 120
+
+      - name: Clone Device Tree
+        run: |
+          mkdir -p ~/android/lineage/device/tecno
+          git clone --depth=1 ${{ inputs.device_tree_url }} \
+            ~/android/lineage/device/tecno/LJ6
+
+      - name: Clone Vendor Tree
+        if: ${{ inputs.vendor_tree_url != '' }}
+        run: |
+          mkdir -p ~/android/lineage/vendor/tecno
+          git clone --depth=1 ${{ inputs.vendor_tree_url }} \
+            ~/android/lineage/vendor/tecno/LJ6
+
+      - name: Clone Kernel Tree
+        if: ${{ inputs.kernel_tree_url != '' }}
+        run: |
+          git clone --depth=1 ${{ inputs.kernel_tree_url }} \
+            ~/android/lineage/kernel/tecno/LJ6
+
+      - name: Set up Build Environment
+        run: |
+          cd ~/android/lineage
+          source build/envsetup.sh
+          echo "TELEPHONY_SERVICE_TELEPHONY_2 := false" >> device/tecno/LJ6/BoardConfig.mk
+          breakfast ${{ env.DEVICE }} ${{ env.BUILD_TYPE }}
+        shell: bash
+
+      - name: Build ROM
+        run: |
+          cd ~/android/lineage
+          source build/envsetup.sh
+          export CCACHE_DIR=${{ env.CCACHE_DIR }}
+          export CCACHE_EXEC=$(which ccache)
+          brunch ${{ env.DEVICE }} ${{ env.BUILD_TYPE }} 2>&1 | tee build.log
+        shell: bash
+        timeout-minutes: 180
+
+      - name: Upload Build Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: lineage-${{ env.DEVICE }}-${{ env.BUILD_TYPE }}
+          path: |
+            ~/android/lineage/out/target/product/${{ env.DEVICE }}/lineage-*.zip
+            ~/android/lineage/out/target/product/${{ env.DEVICE }}/boot.img
+            ~/android/lineage/out/target/product/${{ env.DEVICE }}/dtbo.img
+            ~/android/lineage/out/target/product/${{ env.DEVICE }}/vbmeta*.img
+            ~/android/lineage/out/target/product/${{ env.DEVICE }}/super.img
+          if-no-files-found: warn
+          retention-days: 7
+
+      - name: Upload Build Log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-log
+          path: ~/android/lineage/build.log
+          retention-days: 30
+
+      - name: Show CCache Stats
+        if: always()
+        run: ccache -s
+
+      - name: Show Disk Usage
+        if: always()
+        run: df -h
