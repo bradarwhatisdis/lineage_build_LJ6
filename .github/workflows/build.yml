@@ -142,6 +142,16 @@ jobs:
           ccache -o compression=true
           ccache -o compression_level=1
 
+      - name: Cache LineageOS Source
+        id: cache-source
+        uses: actions/cache@v4
+        with:
+          path: ~/android/lineage
+          key: lineage-source-${{ env.LINEAGE_BRANCH }}-${{ github.run_id }}
+          restore-keys: |
+            lineage-source-${{ env.LINEAGE_BRANCH }}-
+            lineage-source-
+
       - name: Initialize LineageOS Source
         run: |
           mkdir -p ~/android/lineage
