@@ -49,18 +49,67 @@ jobs:
       - name: Checkout Build Repo
         uses: actions/checkout@v4
 
-      - name: Free Disk Space
+      - name: Free Disk Space (Aggressive)
         run: |
-          sudo apt-get clean
-          sudo rm -rf /usr/share/dotnet
+          echo "=== Before cleanup ==="
+          df -h /
+
+          # 1. Remove pre-installed SDKs & toolchains (biggest wins first)
+          echo "--- Removing Android SDK (~12GB) ---"
           sudo rm -rf /usr/local/lib/android
-          sudo rm -rf /opt/ghc
-          sudo rm -rf /opt/hostedtoolcache/CodeQL
+
+          echo "--- Removing tool cache: Node, Go, Python, Ruby, etc (~8GB) ---"
+          sudo rm -rf /opt/hostedtoolcache
+
+          echo "--- Removing .NET (~2GB) ---"
+          sudo rm -rf /usr/share/dotnet
+
+          echo "--- Removing Haskell GHC (~1.5GB) ---"
+          sudo rm -rf /opt/ghc /usr/local/.ghcup
+
+          echo "--- Removing Swift (~3GB) ---"
           sudo rm -rf /usr/share/swift
+
+          echo "--- Removing Julia (~0.5GB) ---"
           sudo rm -rf /usr/local/julia
+
+          echo "--- Removing Azure CLI, AWS tools, Google Cloud SDK (~2GB) ---"
+          sudo rm -rf /opt/az /usr/lib/az /usr/share/az
+          sudo rm -rf /usr/local/aws /usr/local/aws-cli
+          sudo rm -rf /usr/local/gcloud /usr/share/google-cloud-sdk
+          sudo rm -rf /opt/google/chrome /opt/microsoft/msedge
+
+          echo "--- Removing large packages (mono, llvm, php, ccache old versions) ---"
+          sudo apt-get purge -y -qq mono-complete mono-devel mono-runtime llvm-* \
+            php* ruby* r-base* mysql* postgresql* mongodb* 2>/dev/null || true
+
+          echo "--- Removing remaining heavy directories ---"
+          sudo rm -rf /usr/local/share/powershell
+          sudo rm -rf /usr/local/share/boost
+          sudo rm -rf /usr/local/share/chromium
+          sudo rm -rf /usr/local/share/vcpkg
+          sudo rm -rf /usr/local/miniconda
+          sudo rm -rf /usr/share/miniconda
+          sudo rm -rf /opt/pipx
+          sudo rm -rf /opt/graalvm
+
+          # 2. Clean package manager
+          echo "--- Cleaning apt ---"
+          sudo apt-get autoremove -y -qq 2>/dev/null || true
+          sudo apt-get autoclean -y -qq 2>/dev/null || true
+          sudo rm -rf /var/cache/apt/archives/*.deb
+
+          # 3. Remove ALL docker images & system resources
+          echo "--- Docker cleanup (~3-4GB) ---"
           sudo docker system prune -af 2>/dev/null || true
-          sudo rm -rf /var/cache/apt/archives
-          df -h
+          sudo docker rmi -f $(docker images -q) 2>/dev/null || true
+
+          # 4. Clean up home directory caches
+          echo "--- Cleaning home caches ---"
+          rm -rf ~/.cache/pip ~/.cargo ~/.rustup ~/.npm /tmp/* 2>/dev/null || true
+
+          echo "=== After cleanup ==="
+          df -h /
 
       - name: Install Dependencies
         run: |
