@@ -24,7 +24,7 @@ on:
       ccache_size:
         description: CCache size (GB)
         required: true
-        default: "20"
+        default: "10"
         type: string
 
 env:
@@ -56,6 +56,10 @@ jobs:
           sudo rm -rf /usr/local/lib/android
           sudo rm -rf /opt/ghc
           sudo rm -rf /opt/hostedtoolcache/CodeQL
+          sudo rm -rf /usr/share/swift
+          sudo rm -rf /usr/local/julia
+          sudo docker system prune -af 2>/dev/null || true
+          sudo rm -rf /var/cache/apt/archives
           df -h
 
       - name: Install Dependencies
@@ -64,8 +68,8 @@ jobs:
           sudo apt-get install -y \
             bc bison build-essential ccache curl flex g++-multilib \
             gcc-multilib git git-lfs gnupg gperf imagemagick \
-            lib32ncurses5-dev lib32readline-dev lib32z1-dev \
-            libelf-dev liblz4-tool libncurses5 libncurses5-dev \
+            libncurses-dev lib32readline-dev lib32z1-dev \
+            libelf-dev liblz4-tool \
             libsdl1.2-dev libssl-dev libxml2 libxml2-utils \
             lzop pngcrush rsync schedtool squashfs-tools \
             xsltproc zip zlib1g-dev \
@@ -102,7 +106,7 @@ jobs:
       - name: Sync LineageOS Source
         run: |
           cd ~/android/lineage
-          ~/bin/repo sync -c -j$(nproc --all) --force-sync --no-clone-bundle --no-tags
+          ~/bin/repo sync -c -j$(nproc --all) --force-sync --no-clone-bundle --no-tags --depth=1
         shell: bash
         timeout-minutes: 120
 
@@ -128,7 +132,6 @@ jobs:
         run: |
           cd ~/android/lineage
           source build/envsetup.sh
-          echo "TELEPHONY_SERVICE_TELEPHONY_2 := false" >> device/tecno/LJ6/BoardConfig.mk
           breakfast ${{ env.DEVICE }} ${{ env.BUILD_TYPE }}
         shell: bash
 
