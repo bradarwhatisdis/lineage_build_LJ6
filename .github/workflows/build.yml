@@ -179,10 +179,14 @@ jobs:
 
       - name: Set up Swap (OOM Mitigation)
         run: |
-          sudo fallocate -l 8G /swapfile
-          sudo chmod 600 /swapfile
-          sudo mkswap /swapfile
-          sudo swapon /swapfile
+          if swapon --show | grep -q .; then
+            echo "Swap already active, skipping creation"
+          else
+            sudo fallocate -l 8G /swapfile
+            sudo chmod 600 /swapfile
+            sudo mkswap /swapfile
+            sudo swapon /swapfile
+          fi
           swapon --show
           free -h
 
