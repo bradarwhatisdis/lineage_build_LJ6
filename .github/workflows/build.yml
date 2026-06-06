@@ -26,7 +26,11 @@ on:
         required: true
         type: string
       vendor_tree_url:
-        description: Vendor tree repo URL (optional)
+        description: Device vendor tree repo URL (e.g. vendor/tecno/LJ6)
+        required: false
+        type: string
+      vendor_common_url:
+        description: Common vendor tree repo URL (e.g. vendor/tecno/mt6789-common)
         required: false
         type: string
       kernel_tree_url:
@@ -127,6 +131,13 @@ jobs:
           mkdir -p ~/android/lineage/vendor/tecno
           git clone --depth=1 ${{ inputs.vendor_tree_url }} \
             ~/android/lineage/vendor/tecno/LJ6
+
+      - name: Clone Common Vendor Tree
+        if: ${{ inputs.vendor_common_url != '' }}
+        run: |
+          mkdir -p ~/android/lineage/vendor/tecno
+          git clone --depth=1 ${{ inputs.vendor_common_url }} \
+            ~/android/lineage/vendor/tecno/mt6789-common
 
       - name: Clone Kernel Tree
         if: ${{ inputs.kernel_tree_url != '' }}
