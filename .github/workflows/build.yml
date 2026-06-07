@@ -142,6 +142,15 @@ jobs:
           ccache -o compression=true
           ccache -o compression_level=1
 
+      - name: Cache .repo (git objects)
+        id: cache-repo
+        uses: actions/cache@v4
+        with:
+          path: ~/android/lineage/.repo
+          key: lineage-repo-${{ env.LINEAGE_BRANCH }}-${{ github.run_id }}
+          restore-keys: |
+            lineage-repo-${{ env.LINEAGE_BRANCH }}-
+
       - name: Initialize LineageOS Source
         run: |
           mkdir -p ~/android/lineage
@@ -155,7 +164,15 @@ jobs:
       - name: Sync LineageOS Source
         run: |
           cd ~/android/lineage
-          ~/bin/repo sync -c -j$(nproc --all) --force-sync --no-clone-bundle --no-tags
+          if [ -d .repo/projects ]; then
+            echo "=== Cache HIT: restoring working tree from .repo objects ==="
+            ~/bin/repo sync -l -j$(nproc --all) 2>&1
+            echo "=== Fetching new changes since last cache ==="
+            ~/bin/repo sync -c -j$(nproc --all) --force-sync --no-clone-bundle --no-tags 2>&1
+          else
+            echo "=== Cache MISS: full source sync ==="
+            ~/bin/repo sync -c -j$(nproc --all) --force-sync --no-clone-bundle --no-tags
+          fi
           echo "=== Disk Usage After Sync ==="
           df -h
         shell: bash
