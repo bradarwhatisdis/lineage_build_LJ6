@@ -142,16 +142,6 @@ jobs:
           ccache -o compression=true
           ccache -o compression_level=1
 
-      - name: Cache LineageOS Source
-        id: cache-source
-        uses: actions/cache@v4
-        with:
-          path: ~/android/lineage
-          key: lineage-source-${{ env.LINEAGE_BRANCH }}-${{ github.run_id }}
-          restore-keys: |
-            lineage-source-${{ env.LINEAGE_BRANCH }}-
-            lineage-source-
-
       - name: Initialize LineageOS Source
         run: |
           mkdir -p ~/android/lineage
@@ -165,11 +155,9 @@ jobs:
       - name: Sync LineageOS Source
         run: |
           cd ~/android/lineage
-          ~/bin/repo sync -c -j$(nproc --all) --force-sync --no-clone-bundle --no-tags
-          sleep 2
+          ~/bin/repo sync -c -j$(nproc --all) --force-sync --no-clone-bundle --no-tags --depth=1
           echo "=== Disk Usage After Sync ==="
           df -h
-          sleep 5
         shell: bash
         timeout-minutes: 120
 
