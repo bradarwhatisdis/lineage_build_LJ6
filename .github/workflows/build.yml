@@ -135,19 +135,20 @@ jobs:
           chmod a+x ~/bin/repo
           echo "$HOME/bin" >> $GITHUB_PATH
 
+      - name: Cache CCache
+        uses: actions/cache@v4
+        with:
+          path: ~/.ccache
+          key: ccache-${{ env.LINEAGE_BRANCH }}-${{ github.run_id }}
+          restore-keys: |
+            ccache-${{ env.LINEAGE_BRANCH }}-
+
       - name: Setup CCache
         run: |
           mkdir -p $CCACHE_DIR
           ccache -o max_size=$CCACHE_MAXSIZE
           ccache -o compression=true
           ccache -o compression_level=1
-
-      - name: Restore .repo cache
-        id: cache-repo
-        uses: actions/cache/restore@v4
-        with:
-          path: ~/android/lineage/.repo
-          key: lineage-repo-${{ env.LINEAGE_BRANCH }}
 
       - name: Initialize LineageOS Source
         run: |
@@ -162,26 +163,11 @@ jobs:
       - name: Sync LineageOS Source
         run: |
           cd ~/android/lineage
-          if [ -d .repo/projects ]; then
-            echo "=== Cache HIT: restoring working tree from .repo objects ==="
-            ~/bin/repo sync -l -j$(nproc --all) 2>&1
-            echo "=== Fetching new changes since last cache ==="
-            ~/bin/repo sync -c -j$(nproc --all) --force-sync --no-clone-bundle --no-tags 2>&1
-          else
-            echo "=== Cache MISS: full source sync ==="
-            ~/bin/repo sync -c -j$(nproc --all) --force-sync --no-clone-bundle --no-tags
-          fi
+          ~/bin/repo sync -c -j$(nproc --all) --force-sync --no-clone-bundle --no-tags
           echo "=== Disk Usage After Sync ==="
           df -h
         shell: bash
         timeout-minutes: 120
-
-      - name: Save .repo cache (immediately after sync)
-        uses: actions/cache/save@v4
-        if: always() && steps.cache-repo.outputs.cache-hit != 'true'
-        with:
-          path: ~/android/lineage/.repo
-          key: lineage-repo-${{ env.LINEAGE_BRANCH }}
 
       - name: Clone Device Tree
         run: |
